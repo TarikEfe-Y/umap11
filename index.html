@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>OpenStreetMap + Firebase Realtime</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+      const firebaseURL = "https://navigasyon-ffc0c-default-rtdb.firebaseio.com/locations.json";
+
+      let map;
+      let markers = {}; // Firebase'deki markerları takip etmek için obje
+
+      function initMap() {
+        map = L.map("map").setView([39.92, 32.85], 6); // Türkiye merkezli başlat
+
+        // OpenStreetMap katmanı ekle
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map);
+
+        // Firebase'deki verileri al
+        fetchLocations();
+      }
+
+      function fetchLocations() {
+        fetch(firebaseURL)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data) {
+              Object.keys(data).forEach((key) => {
+                let latitude = data[key].latitude;
+                let longitude = data[key].longitude;
+                let type = data[key].type; // Firebase'den "type" bilgisini al
+
+                console.log("Veri alındı:", type); // Kontrol için
+
+                // Eğer marker zaten eklenmişse tekrar ekleme
+                if (!markers[key]) {
+                  let iconURL =
+                    type === "erzak"
+                      ? "https://cdn-icons-png.flaticon.com/512/1046/1046784.png"
+                      : "https://cdn-icons-png.flaticon.com/128/13365/13365621.png";
+
+                  let iconHTML = `
+                    <div style="
+                      position: relative;
+                      width: 40px;
+                      height: 40px;
+                    ">
+                      <div style="
+                        position: absolute;
+                        z-index: 10;
+                        background-color: ${type === "erzak" ? "red" : "blue"};
+                        color: white;
+                        padding: 5px;
+                        border-radius: 50%;
+                        text-align: center;
+                        font-size: 12px;
+                        font-weight: bold;
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                      ">
+                        <img src="${iconURL}" 
+                          width="25" height="25" style="vertical-align: middle;">
+                      </div>
+                    </div>
+                  `;
+
+                  let customIcon = L.divIcon({
+                    className: "custom-marker",
+                    html: iconHTML,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40], // Klasik pin ikon gibi görünmesi için ayarladım
+                  });
+
+                  markers[key] = L.marker([latitude, longitude], { icon: customIcon })
+                    .addTo(map)
+                    .bindPopup(`<b>Tür:</b> ${type}<br>Konum: ${latitude}, ${longitude}`);
+                }
+              });
+            }
+          })
+          .catch((error) => console.error("Firebase verisi alınamadı:", error));
+      }
+    </script>
+    <style>
+      #map {
+        height: 500px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body onload="initMap()">
+    <h1>OpenStreetMap + Firebase Realtime</h1>
+    <div id="map"></div>
+  </body>
+</html>
